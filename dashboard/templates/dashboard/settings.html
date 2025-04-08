@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+
+{% block title %}System Settings{% endblock %}
+{% block heading %}System Settings{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">System Parameters</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Type</th>
+                                <th>Value</th>
+                                <th>Last Modified</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for param in parameters %}
+                            <tr>
+                                <td>{{ param.name }}</td>
+                                <td>{{ param.get_param_type_display }}</td>
+                                <td><code>{{ param.value|truncatechars:30 }}</code></td>
+                                <td>{{ param.last_modified|date:"Y-m-d H:i" }}</td>
+                                <td>
+                                    <a href="#" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-pencil"></i> Edit
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center">No parameters defined</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Add New Parameter</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="id_name" class="form-label">Name</label>
+                        {{ form.name }}
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_param_type" class="form-label">Type</label>
+                        {{ form.param_type }}
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_value" class="form-label">Value</label>
+                        {{ form.value }}
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_description" class="form-label">Description</label>
+                        {{ form.description }}
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save Parameter</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
