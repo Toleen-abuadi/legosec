@@ -1,0 +1,4 @@
+pyopenssl-psk @ git+https://github.com/gesslerpd/pyopenssl-psk.git@895701d6d420d5d1ed2d341d81fa689fd00b4e63
+cryptography>=42.0.0
+pytest>=8.0.0
+sqlite3>=0.0.1

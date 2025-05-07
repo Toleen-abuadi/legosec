@@ -1,0 +1,13 @@
+<!-- dashboard/templates/client_detail.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1>Client Details for {{ client.client_name }}</h1>
+    <p>Client ID: {{ client.client_id }}</p>
+    <p>Authorized Peers: {{ client.authorized_peers }}</p>
+    <p>Expires At: {{ client.expires_at|date:"Y-m-d H:i" }}</p>
+    <p>Last Updated: {{ client.last_updated|date:"Y-m-d H:i" }}</p>
+    <a href="{% url 'client-dashboard' client_id=client.client_id %}" class="btn btn-primary">Back to Dashboard</a>
+</div>
+{% endblock %}

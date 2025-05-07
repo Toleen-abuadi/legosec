@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1>All Notifications</h1>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>Notifications</span>
+                    <button class="btn btn-sm btn-outline-secondary" id="mark-all-read">Mark All as Read</button>
+                </div>
+                <div class="card-body">
+                    {% if notifications %}
+                    <div class="list-group list-group-flush">
+                        {% for notification in notifications %}
+                        <div class="list-group-item {% if not notification.is_read %}bg-light{% endif %}">
+                            <strong>{{ notification.get_notification_type_display }}</strong>
+                            <p class="mb-0">{{ notification.message }}</p>
+                            <small class="text-muted">{{ notification.created_at|date:"Y-m-d H:i" }}</small>
+                            {% if not notification.is_read %}
+                            <button class="btn btn-sm btn-outline-primary mark-read" data-notification-id="{{ notification.id }}">Mark Read</button>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted">No notifications found</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+$(document).ready(function() {
+    $('.mark-read').click(function() {
+        const notificationId = $(this).data('notification-id');
+        $.post(`/notifications/${notificationId}/mark-read/`, {
+            csrfmiddlewaretoken: '{{ csrf_token }}'
+        }, function() {
+            location.reload();
+        });
+    });
+    
+    $('#mark-all-read').click(function() {
+        if (confirm('Mark all notifications as read?')) {
+            $.post('/notifications/mark-all-read/', {
+                csrfmiddlewaretoken: '{{ csrf_token }}'
+            }, function() {
+                location.reload();
+            });
+        }
+    });
+});
+</script>
+{% endblock %}

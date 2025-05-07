@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="text-center">Secure Client Login</h3>
+                </div>
+                <div class="card-body">
+                    <form id="login-form">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="client_id" class="form-label">Client ID</label>
+                            <input type="text" class="form-control" id="client_id" name="client_id" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="encrypted_secret" class="form-label">Secret ID</label>
+                            <input type="password" class="form-control" id="encrypted_secret" name="encrypted_secret" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Login</button>
+                    </form>
+                    <div id="error-message" class="alert alert-danger mt-3 d-none"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('login-form');
+    const errorMessage = document.getElementById('error-message');
+    
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const clientId = document.getElementById('client_id').value;
+        const secret = document.getElementById('encrypted_secret').value;
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        
+        fetch("{% url 'api-login' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                client_id: clientId,
+                encrypted_secret: secret
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(err => { throw err; });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.status === 'authenticated') {
+                window.location.href = data.redirect_url;
+            } else {
+                throw new Error(data.error || 'Login failed');
+            }
+        })
+        .catch(error => {
+            errorMessage.textContent = error.message;
+            errorMessage.classList.remove('d-none');
+        });
+    });
+});
+</script>
+{% endblock %}

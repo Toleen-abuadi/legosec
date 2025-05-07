@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1>Client Dashboard</h1>
+            <div class="d-flex justify-content-between align-items-center">
+                <span class="badge bg-{% if client.status == 'Active' %}success{% elif client.status == 'Expired' %}danger{% else %}warning{% endif %} status-badge">
+                    {{ client.status }}
+                    {% if client.status == 'Expiring soon' %}
+                    ({{ client.expires_in_days }} days)
+                    {% endif %}
+                </span>
+                <a href="#" onclick="document.getElementById('logout-form').submit();">Logout</a>
+                <form id="logout-form" action="{% url 'logout' %}" method="post" style="display:none;">
+                    {% csrf_token %}
+                </form>
+            </div>
+            <hr>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Identity Status Card -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    Identity Status
+                </div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Expiration Date:</span>
+                            <strong>{{ client.expires_at|date:"Y-m-d H:i" }}</strong>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Last Updated:</span>
+                            <strong>{{ client.last_updated|date:"Y-m-d H:i" }}</strong>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Authorized Peers:</span>
+                            <strong>{{ client.authorized_peers|length }}</strong>
+                        </li>
+                    </ul>
+                    {% if client.status == 'Expiring soon' or client.status == 'Expired' %}
+                    <button class="btn btn-sm btn-primary" id="renew-identity-btn">Renew</button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Notifications Card -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    Notifications
+                </div>
+                <div class="card-body">
+                    {% if notifications %}
+                    <div class="list-group list-group-flush">
+                        {% for notification in notifications %}
+                        <div class="list-group-item {% if not notification.is_read %}bg-light{% endif %}">
+                            <strong>{{ notification.get_notification_type_display }}</strong>
+                            <p class="mb-0">{{ notification.message }}</p>
+                            <small class="text-muted">{{ notification.created_at|timesince }} ago</small>
+                            {% if not notification.is_read %}
+                            <button class="btn btn-sm btn-outline-primary mark-read" data-notification-id="{{ notification.id }}">Mark Read</button>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted">No unread notifications</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity Card -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    Recent Activity
+                </div>
+                <div class="card-body">
+                    {% if logs %}
+                    <div class="list-group list-group-flush">
+                        {% for log in logs %}
+                        <div class="list-group-item">
+                            <strong>{{ log.get_log_type_display }}</strong>
+                            <small class="text-muted">{{ log.timestamp|timesince }} ago</small>
+                            <p class="mb-0 small">{{ log.message }}</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <a href="{% url 'log-list' %}" class="btn btn-sm btn-link mt-2">View all activity</a>
+                    {% else %}
+                    <p class="text-muted">No recent activity</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+$(document).ready(function() {
+    // Handle identity renewal
+    $('#renew-identity-btn').click(function() {
+        $.post("{% url 'renew-identity' client_id=client.client_id %}", {
+            csrfmiddlewaretoken: '{{ csrf_token }}'
+        }, function(data) {
+            if (data.status === 'success') {
+                showToast('Renewal initiated successfully', 'success');
+                setTimeout(() => {
+                    location.reload();
+                }, 2000);
+            } else {
+                showToast(data.error || 'Renewal failed', 'danger');
+            }
+        }).fail(function() {
+            showToast('Error processing renewal request', 'danger');
+        });
+    });
+
+    // Handle marking notifications as read
+    $('.mark-read').click(function() {
+        const notificationId = $(this).data('notification-id');
+        $.post(`/notifications/${notificationId}/mark-read/`, {
+            csrfmiddlewaretoken: '{{ csrf_token }}'
+        }, function() {
+            location.reload();
+        });
+    });
+
+    function showToast(message, type) {
+        const toast = $(`
+            <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="toast-header">
+                    <strong class="me-auto">Notification</strong>
+                    <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+                <div class="toast-body bg-${type} text-white">
+                    ${message}
+                </div>
+            </div>
+        `);
+        
+        $('.toast-container').append(toast);
+        
+        setTimeout(() => {
+            toast.toast('hide');
+        }, 5000);
+    }
+});
+</script>
+{% endblock %}
