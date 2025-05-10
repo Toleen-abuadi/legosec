@@ -3,7 +3,7 @@ from sdk import SecureChannelSDK
 from datetime import datetime
 
 def client1_test():
-    print("\n=== Starting Client 1 Test ===")
+    print("\n=== Starting Client 2 Test ===")
     
     try:
         # Initialize client with specific ID for testing

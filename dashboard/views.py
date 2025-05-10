@@ -21,9 +21,9 @@ def login_view(request):
 @require_POST
 def logout_view(request):
     logout(request)
-    return redirect('login')
+    return JsonResponse({'status': 'success', 'redirect_url': reverse('login')})
 
-@csrf_exempt
+
 def api_login(request):
     if request.method == 'POST':
         try:
@@ -50,7 +50,7 @@ def api_login(request):
                 return JsonResponse({
                     'status': 'authenticated',
                     'client_id': client_id,
-                    'redirect_url': reverse('dashboard', kwargs={'client_id': client_id})
+                    'redirect_url': reverse('client-dashboard', kwargs={'client_id': client_id})
                 })
             else:
                 print("Authentication failed - invalid credentials")
@@ -121,44 +121,36 @@ def mark_all_notifications_read(request):
 @login_required
 @require_POST
 def renew_identity(request, client_id):
-    """Initiate identity renewal process"""
+    print(f"\n=== Renew Identity Request ===")
+    print(f"Client ID: {client_id}")
+    print(f"User: {request.user.username}")
+    print(f"Method: {request.method}")
+    print(f"Headers: {request.headers}")
+    print("Body:", request.body)
+    
     if request.user.username != client_id:
+        print("Authorization failed")
         return JsonResponse({'error': 'Unauthorized'}, status=403)
     
     try:
-        # Initialize identity manager
+        print("Initializing IdentityManager...")
         im = IdentityManager(client_id=client_id)
-        
-        # Check current status
         status = im.check_identity_expiration()
+        print(f"Current status: {status}")
+        
         if status == "not_registered":
+            print("Client not registered")
             return JsonResponse({'error': 'Client not registered'}, status=400)
             
-        # Connect to KDC and renew
+        print("Attempting renewal...")
         if not im.renew_identity():
             raise Exception("Renewal failed")
             
-        # Log and notify
-        log_client_activity(
-            client_id=client_id,
-            log_type='IDENTITY',
-            message='Identity renewed successfully'
-        )
-        
-        create_notification(
-            client_id=client_id,
-            message='Your identity has been renewed',
-            notification_type='SYSTEM'
-        )
-        
+        print("Renewal successful")
         return JsonResponse({'status': 'success'})
         
     except Exception as e:
-        log_client_activity(
-            client_id=client_id,
-            log_type='ERROR',
-            message=f'Identity renewal failed: {str(e)}'
-        )
+        print(f"Renewal error: {str(e)}")
         return JsonResponse({'error': str(e)}, status=400)
 
 # Helper functions
@@ -185,7 +177,7 @@ def get_unread_notifications(client_id, limit=5):
 @login_required
 def notification_list(request):
     """View to list all notifications for the authenticated client."""
-    client_id = request.user.username  # Assuming the client_id is the same as the username
+    client_id = request.user.username  
     notifications = Notification.objects.filter(client__client_id=client_id).order_by('-created_at')
     context = {
         'notifications': notifications,
@@ -232,10 +224,3 @@ def check_status(request, client_id):
     im = IdentityManager(client_id=client_id)
     status = im.check_identity_expiration()
     return JsonResponse({'status': status})
-
-@login_required
-def renew_identity(request, client_id):
-    im = IdentityManager(client_id=client_id)
-    if im.renew_identity():
-        return JsonResponse({'status': 'success'})
-    return JsonResponse({'status': 'error'}, status=400)

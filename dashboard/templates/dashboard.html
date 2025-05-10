@@ -12,10 +12,6 @@
                     ({{ client.expires_in_days }} days)
                     {% endif %}
                 </span>
-                <a href="#" onclick="document.getElementById('logout-form').submit();">Logout</a>
-                <form id="logout-form" action="{% url 'logout' %}" method="post" style="display:none;">
-                    {% csrf_token %}
-                </form>
             </div>
             <hr>
         </div>
@@ -109,20 +105,50 @@
 <script>
 $(document).ready(function() {
     // Handle identity renewal
-    $('#renew-identity-btn').click(function() {
-        $.post("{% url 'renew-identity' client_id=client.client_id %}", {
-            csrfmiddlewaretoken: '{{ csrf_token }}'
-        }, function(data) {
-            if (data.status === 'success') {
-                showToast('Renewal initiated successfully', 'success');
-                setTimeout(() => {
-                    location.reload();
-                }, 2000);
-            } else {
-                showToast(data.error || 'Renewal failed', 'danger');
+    $(document).on('click', '#renew-identity-btn', function() {
+        const btn = $(this);
+        btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status"></span> Renewing...');
+        
+        // Get CSRF token from cookie
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
             }
-        }).fail(function() {
-            showToast('Error processing renewal request', 'danger');
+            return cookieValue;
+        }
+        const csrftoken = getCookie('csrftoken');
+        
+        $.ajax({
+            url: "{% url 'renew-identity' client_id=client.client_id %}",
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken,
+                'Content-Type': 'application/json'
+            },
+            data: JSON.stringify({}),
+            success: function(data) {
+                if (data.status === 'success') {
+                    showToast('Identity renewed successfully!', 'success');
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    showToast(data.error || 'Renewal failed', 'danger');
+                    btn.prop('disabled', false).text('Renew');
+                }
+            },
+            error: function(xhr) {
+                const errorMsg = xhr.responseJSON?.error || 'Error processing request';
+                showToast(errorMsg, 'danger');
+                btn.prop('disabled', false).text('Renew');
+                console.error("Renewal error:", xhr.responseJSON);
+            }
         });
     });
 

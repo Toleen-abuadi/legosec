@@ -30,68 +30,68 @@ class KDCServer:
         )
 
 
-    # def _init_database(self):
-    #     """Initialize database tables"""
-    #     with sqlite3.connect(self.db_path) as conn:
-    #         cursor = conn.cursor()
-    #         # Clients table
-    #         cursor.execute("""
-    #             CREATE TABLE IF NOT EXISTS clients (
-    #                 client_id TEXT PRIMARY KEY,
-    #                 client_name TEXT NOT NULL,
-    #                 secret_id BLOB NOT NULL,
-    #                 authorized_peers TEXT,
-    #                 expires_at TIMESTAMP NOT NULL,
-    #                 public_key BLOB,
-    #                 last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    #             )
-    #         """)
-    #         # PSK exchange table
-    #         cursor.execute("""
-    #             CREATE TABLE IF NOT EXISTS psk_exchange (
-    #                 from_id TEXT,
-    #                 to_id TEXT,
-    #                 shared_psk BLOB,
-    #                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    #                 PRIMARY KEY (from_id, to_id)
-    #             )
-    #         """)
-    #         # Session keys table
-    #         cursor.execute("""
-    #             CREATE TABLE IF NOT EXISTS session_keys (
-    #                 session_id TEXT PRIMARY KEY,
-    #                 client_id TEXT NOT NULL,
-    #                 session_key BLOB NOT NULL,
-    #                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    #                 expires_at TIMESTAMP NOT NULL
-    #             )
-    #         """)
-    #         # Notifications table
-    #         cursor.execute("""
-    #             CREATE TABLE IF NOT EXISTS notifications (
-    #                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-    #                 client_id TEXT,
-    #                 message TEXT,
-    #                 notification_type TEXT,
-    #                 is_read BOOLEAN DEFAULT 0,
-    #                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    #                 action_url TEXT,
-    #                 FOREIGN KEY (client_id) REFERENCES clients (client_id)
-    #             )
-    #         """)
-    #         # Client logs table
-    #         cursor.execute("""
-    #             CREATE TABLE IF NOT EXISTS client_logs (
-    #                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-    #                 client_id TEXT,
-    #                 log_type TEXT,
-    #                 message TEXT,
-    #                 timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    #                 metadata TEXT,
-    #                 FOREIGN KEY (client_id) REFERENCES clients (client_id)
-    #             )
-    #         """)
-    #         conn.commit()
+    def _init_database(self):
+        """Initialize database tables"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            # Clients table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS clients (
+                    client_id TEXT PRIMARY KEY,
+                    client_name TEXT NOT NULL,
+                    secret_id BLOB NOT NULL,
+                    authorized_peers TEXT,
+                    expires_at TIMESTAMP NOT NULL,
+                    public_key BLOB,
+                    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            # PSK exchange table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS psk_exchange (
+                    from_id TEXT,
+                    to_id TEXT,
+                    shared_psk BLOB,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (from_id, to_id)
+                )
+            """)
+            # Session keys table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS session_keys (
+                    session_id TEXT PRIMARY KEY,
+                    client_id TEXT NOT NULL,
+                    session_key BLOB NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    expires_at TIMESTAMP NOT NULL
+                )
+            """)
+            # Notifications table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS notifications (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    client_id TEXT,
+                    message TEXT,
+                    notification_type TEXT,
+                    is_read BOOLEAN DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    action_url TEXT,
+                    FOREIGN KEY (client_id) REFERENCES clients (client_id)
+                )
+            """)
+            # Client logs table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS client_logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    client_id TEXT,
+                    log_type TEXT,
+                    message TEXT,
+                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    metadata TEXT,
+                    FOREIGN KEY (client_id) REFERENCES clients (client_id)
+                )
+            """)
+            conn.commit()
 
 
     def register_client(self, client_id, client_name, secret_id, authorized_peers, expires_at):

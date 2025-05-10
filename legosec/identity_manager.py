@@ -11,7 +11,7 @@ sqlite3.register_adapter(datetime, lambda dt: dt.isoformat())
 sqlite3.register_converter("TIMESTAMP", lambda s: datetime.fromisoformat(s.decode()))
 
 class IdentityManager:
-    def __init__(self, client_id=None, client_name=None, identity_dir=".", db_path="../kdc_database.db"):
+    def __init__(self, client_id=None, client_name=None, identity_dir=".", db_path="kdc_database.db"):
         self.client_id = client_id or f"client_{os.urandom(4).hex()}"  # Auto-generated if not provided
         self.client_name = client_name or f"Client-{self.client_id[-4:]}"  # Default name
         self.identity_path = Path(identity_dir) / f".{self.client_id}_identity.json"

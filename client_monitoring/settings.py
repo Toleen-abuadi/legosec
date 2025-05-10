@@ -76,6 +76,12 @@ TEMPLATES = [
     },
 ]
 
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+    },
+}
+
 WSGI_APPLICATION = 'client_monitoring.wsgi.application'
 ASGI_APPLICATION = 'client_monitoring.asgi.application'
 

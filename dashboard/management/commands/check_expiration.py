@@ -13,8 +13,7 @@ class Command(BaseCommand):
         threshold = timezone.now() + timedelta(days=7)
         expiring_clients = Client.objects.filter(
             expires_at__lte=threshold,
-            expires_at__gt=timezone.now(),
-            is_active=True
+            expires_at__gt=timezone.now()
         )
         
         channel_layer = get_channel_layer()
