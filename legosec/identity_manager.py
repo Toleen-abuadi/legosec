@@ -6,21 +6,58 @@ from datetime import datetime, timedelta
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import padding
 
-# Register SQLite3 datetime handlers (Python 3.12+ compatibility)
+# Register SQLite3 datetime handlers 
 sqlite3.register_adapter(datetime, lambda dt: dt.isoformat())
 sqlite3.register_converter("TIMESTAMP", lambda s: datetime.fromisoformat(s.decode()))
 
 class IdentityManager:
-    def __init__(self, client_id=None, client_name=None, identity_dir=".", db_path="kdc_database.db"):
-        self.client_id = client_id or f"client_{os.urandom(4).hex()}"  # Auto-generated if not provided
-        self.client_name = client_name or f"Client-{self.client_id[-4:]}"  # Default name
+    def __init__(self, client_id=None, client_name=None, identity_dir=".", db_path="../kdc_database.db", enable_logging=True):
+        """Initialize with optional auto-generation and logging"""
+        self.client_id = client_id or f"client_{os.urandom(4).hex()}"
+        self.client_name = client_name or f"Client-{self.client_id[-4:]}"
         self.identity_path = Path(identity_dir) / f".{self.client_id}_identity.json"
         self.db_path = db_path
+        self.enable_logging = enable_logging
+        
+        self._log(f"Initializing for client {self.client_id}")
+        
+        if self.identity_path.exists():
+            if not self._is_identity_valid():
+                self._log("Invalid identity detected - removing file", "WARN")
+                try:
+                    self.identity_path.unlink()
+                except Exception as e:
+                    self._log(f"Failed to remove invalid identity: {str(e)}", "ERROR")
+        
         self._init_database()
 
+
+    def _log(self, message, level="DEBUG"):
+        """Helper for conditional logging"""
+        if self.enable_logging:
+            print(f"[{level}][IdentityManager] {message}")
+
+    def _is_identity_valid(self):
+        """Check if identity file is valid (from sara)"""
+        try:
+            with open(self.identity_path, "r") as f:
+                data = json.load(f)
+                expires_at = datetime.fromisoformat(data.get("expires_at", "1970-01-01T00:00:00"))
+            valid = datetime.now() < expires_at
+            
+            self._log(f"Identity {'valid' if valid else 'expired'} (expires: {expires_at})")
+            return valid
+            
+        except Exception as e:
+            self._log(f"Identity validation error: {str(e)}", "ERROR")
+            return False
+
+
     def _init_database(self):
-        """Initialize the database with required tables"""
-        with sqlite3.connect(self.db_path) as conn:
+        """Initialize database tables with secure logging"""
+        self._log("Initializing database schema")
+        try:
+            with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
                 cursor.execute("""
                     CREATE TABLE IF NOT EXISTS clients (
@@ -34,24 +71,34 @@ class IdentityManager:
                     )
                 """)
                 conn.commit()
+        except sqlite3.Error as e:
+            self._log(f"Database initialization failed: {str(e)}", "ERROR")
+            raise
+
 
     def is_registered(self):
         """Check if client is registered by verifying identity file exists"""
         return self.identity_path.exists()
 
     def load_identity(self):
-        """Load identity data from JSON file"""
+        """Securely load identity data (combined from both)"""
+        self._log("Loading identity file")
+        
         if not self.is_registered():
             return None
             
         try:
             with open(self.identity_path, 'r') as f:
                 data = json.load(f)
-                # Validate required fields
-                if all(key in data for key in ['client_id', 'client_name', 'encrypted_secret', 'expires_at']):
-                    return data
+                
+            if not all(key in data for key in ['client_id', 'client_name', 'encrypted_secret', 'expires_at']):
+                self._log("Identity file missing required fields", "WARN")
                 return None
-        except (json.JSONDecodeError, IOError):
+                
+            return data
+            
+        except Exception as e:
+            self._log(f"Failed to load identity: {str(e)}", "ERROR")
             return None
 
     def is_expired(self, identity_data):
@@ -199,36 +246,43 @@ class IdentityManager:
         return "valid"
 
     def renew_identity(self, kdc_public_key=None, auto_renew=False):
-        """Handle the security aspects of identity renewal"""
+        """Combined renewal logic from both versions"""
         if not auto_renew and self._get_identity_status() not in ["expired", "expiring_soon"]:
             return False
 
-        # 1. Generate new secret and expiry
-        secret = os.urandom(32)
-        new_expiry = datetime.now() + timedelta(days=30)
+        self._log(f"Renewing identity for {self.client_id[:6]}...", "INFO")
         
-        # 2. Encrypt with KDC's public key if provided
-        if kdc_public_key:
-            encrypted_secret = kdc_public_key.encrypt(
-                secret,
-                padding.OAEP(
-                    mgf=padding.MGF1(algorithm=hashes.SHA256()),
-                    algorithm=hashes.SHA256(),
-                    label=None
+        try:
+            # Generate new secret and expiry
+            secret = os.urandom(32)
+            new_expiry = datetime.now() + timedelta(days=30)
+            
+            # Encrypt with KDC's public key
+            if kdc_public_key:
+                encrypted_secret = kdc_public_key.encrypt(
+                    secret,
+                    padding.OAEP(
+                        mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                        algorithm=hashes.SHA256(),
+                        label=None
+                    )
                 )
-            )
-        else:
-            # Try to get from existing identity
-            identity = self.load_identity()
-            if not identity:
-                return False
-            encrypted_secret = bytes.fromhex(identity['encrypted_secret'])
+            else:
+                # Fallback to existing encrypted secret
+                identity = self.load_identity()
+                if not identity:
+                    return False
+                encrypted_secret = bytes.fromhex(identity['encrypted_secret'])
 
-        # 3. Update database and local file
-        success = self._update_client_identity(encrypted_secret, new_expiry)
-        if success:
-            self.store_identity(encrypted_secret, new_expiry)
-        return success
+            # Update database and local file
+            if self._update_client_identity(encrypted_secret, new_expiry):
+                self.store_identity(encrypted_secret, new_expiry)
+                return True
+            return False
+            
+        except Exception as e:
+            self._log(f"Renewal failed: {str(e)}", "ERROR")
+            return False
 
     # Private helper methods
     def _get_identity_status(self):
