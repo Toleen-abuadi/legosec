@@ -4,7 +4,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setup(
-    name="legosec",
+    name="legosec_sdk",
     version="0.1.1",  
     author="LegoSec Team",
     author_email="toleenabuadi@gmail.com",
