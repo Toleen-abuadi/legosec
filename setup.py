@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="legosec",
-    version="0.1.0",  # Start with a version number
+    version="0.1.1",  # Start with a version number
     author="LegoSec Team",
     author_email="toleenabuadi@gmail.com",
     description="A security package for LEGO systems",
